@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CIPHER — Code Obfuscator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0b0e14;
+    --bg-panel: #11151f;
+    --bg-panel-2: #141926;
+    --line: #232a3b;
+    --ink: #e8ecf5;
+    --ink-dim: #828ba3;
+    --accent: #7c5cff;
+    --accent-2: #2fe0c4;
+    --warn: #ff6b6b;
+    --radius: 10px;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      --bg: #0b0e14; --bg-panel:#11151f; --bg-panel-2:#141926; --ink:#e8ecf5; --ink-dim:#828ba3; --line:#232a3b;
+    }
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  html{scroll-padding-top: env(safe-area-inset-top, 0px);}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1100px 600px at 85% -10%, rgba(124,92,255,0.14), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgba(47,224,196,0.10), transparent 60%),
+      var(--bg);
+    color:var(--ink);
+    font-family:'Manrope', system-ui, sans-serif;
+    min-height:100%;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px; margin:0 auto; padding:28px 20px 60px;}
+
+  header{
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    margin-bottom:28px; flex-wrap:wrap;
+  }
+  .brand{display:flex; align-items:center; gap:12px;}
+  .mark{
+    width:38px; height:38px; border-radius:9px;
+    background:linear-gradient(135deg, var(--accent), var(--accent-2));
+    display:flex; align-items:center; justify-content:center;
+    font-family:'JetBrains Mono', monospace; font-weight:800; font-size:15px; color:#0b0e14;
+    box-shadow:0 6px 18px rgba(124,92,255,0.35);
+  }
+  .brand-text h1{
+    font-family:'JetBrains Mono', monospace; font-size:16.5px; letter-spacing:0.02em; margin:0; font-weight:700;
+  }
+  .brand-text p{margin:2px 0 0; font-size:12.5px; color:var(--ink-dim);}
+  .status{
+    font-family:'JetBrains Mono', monospace; font-size:11.5px; color:var(--accent-2);
+    display:flex; align-items:center; gap:7px; padding:7px 12px;
+    border:1px solid var(--line); border-radius:100px; background:rgba(47,224,196,0.05);
+  }
+  .status .dot{width:6px;height:6px;border-radius:50%; background:var(--accent-2); box-shadow:0 0 8px var(--accent-2);}
+
+  .panels{
+    display:grid; grid-template-columns:1fr 1fr; gap:18px;
+  }
+  @media (max-width:860px){ .panels{grid-template-columns:1fr;} }
+
+  .panel{
+    background:var(--bg-panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    overflow:hidden;
+    display:flex; flex-direction:column;
+  }
+  .panel-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:12px 14px; border-bottom:1px solid var(--line);
+    background:var(--bg-panel-2);
+  }
+  .panel-head .tag{
+    font-family:'JetBrains Mono', monospace; font-size:11.5px; color:var(--ink-dim);
+    display:flex; align-items:center; gap:8px; overflow:hidden;
+  }
+  .panel-head .tag span#fileName{
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;
+  }
+  .head-actions{display:flex; align-items:center; gap:8px; flex-shrink:0;}
+  .dots{display:flex; gap:5px; flex-shrink:0;}
+  .dots span{width:8px; height:8px; border-radius:50%; background:var(--line);}
+  .drop-zone{ position:relative; flex:1; display:flex; min-height:300px; max-height:420px; }
+  .drop-overlay{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:rgba(124,92,255,0.12); border:2px dashed var(--accent);
+    font-family:'JetBrains Mono', monospace; font-size:13px; color:var(--accent-2);
+    opacity:0; pointer-events:none; transition:opacity .15s ease;
+  }
+  .drop-zone.dragging .drop-overlay{ opacity:1; }
+  textarea, pre.output{
+    flex:1; min-height:300px; max-height:420px;
+    padding:16px; background:transparent; color:var(--ink);
+    border:none; outline:none; resize:vertical;
+    font-family:'JetBrains Mono', monospace; font-size:12.8px; line-height:1.65;
+    overflow:auto; white-space:pre-wrap; word-break:break-all;
+  }
+  textarea::placeholder{color:#515a70;}
+  pre.output{margin:0; color:var(--accent-2);}
+  pre.output.empty{color:#515a70;}
+
+  .toolbar{
+    display:flex; align-items:center; justify-content:center; gap:14px;
+    margin:22px 0; flex-wrap:wrap;
+  }
+
+  .modes{
+    display:flex; gap:6px; background:var(--bg-panel); border:1px solid var(--line);
+    padding:4px; border-radius:100px;
+  }
+  .modes button{
+    font-family:'JetBrains Mono', monospace; font-size:11.5px; color:var(--ink-dim);
+    background:transparent; border:none; padding:7px 14px; border-radius:100px;
+    cursor:pointer; transition:color .15s ease, background .15s ease;
+  }
+  .modes button.active{ color:#0b0e14; background:linear-gradient(135deg, var(--accent), var(--accent-2)); }
+
+  /* 3D press button */
+  .btn3d{
+    --h: 46px;
+    position:relative;
+    font-family:'JetBrains Mono', monospace; font-weight:700; font-size:13.5px; letter-spacing:.01em;
+    color:#0b0e14; background:none; border:none; cursor:pointer;
+    padding:0; perspective:400px;
+  }
+  .btn3d .face{
+    display:block; padding:13px 26px; border-radius:9px;
+    background:linear-gradient(135deg, var(--accent-2), var(--accent));
+    transform:translateY(-5px);
+    transition:transform .12s ease;
+    box-shadow:0 2px 0 rgba(0,0,0,0.15);
+  }
+  .btn3d .edge{
+    position:absolute; inset:0; border-radius:9px;
+    background:#1b8f7d;
+    background:linear-gradient(135deg, #1f9f87, #4c3aa8);
+  }
+  .btn3d:hover .face{ transform:translateY(-7px); }
+  .btn3d:active .face{ transform:translateY(-1px); }
+  .btn3d:active{ filter:brightness(0.97); }
+
+  .ghost-btn{
+    font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--ink-dim);
+    background:transparent; border:1px solid var(--line); padding:9px 16px; border-radius:8px;
+    cursor:pointer; transition:border-color .15s ease, color .15s ease, transform .15s ease;
+  }
+  .ghost-btn:hover{ color:var(--ink); border-color:var(--accent); transform:translateY(-2px); }
+  .ghost-btn:active{ transform:translateY(0); }
+
+  footer{
+    margin-top:30px; text-align:center; font-size:11.5px; color:var(--ink-dim);
+    font-family:'JetBrains Mono', monospace;
+  }
+  footer span{color:var(--accent-2);}
+
+  .copied-toast{
+    position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(12px);
+    background:var(--bg-panel); border:1px solid var(--accent-2); color:var(--accent-2);
+    font-family:'JetBrains Mono', monospace; font-size:12.5px; padding:10px 18px; border-radius:8px;
+    opacity:0; pointer-events:none; transition:opacity .2s ease, transform .2s ease;
+    z-index:20;
+  }
+  .copied-toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  ::selection{ background:rgba(124,92,255,0.35); }
+
+  @media (prefers-reduced-motion: reduce){
+    .btn3d .face, .ghost-btn{ transition:none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <div class="mark">{ }</div>
+      <div class="brand-text">
+        <h1>CIPHER</h1>
+        <p>Obfuscator kode HTML / JS — ubah jadi teks acak</p>
+      </div>
+    </div>
+    <div class="status"><span class="dot"></span>siap mengenkripsi</div>
+  </header>
+
+  <div class="panels">
+    <div class="panel">
+      <div class="panel-head">
+        <div class="tag"><span class="dots"><span></span><span></span><span></span></span><span id="fileName">input.html</span></div>
+        <div class="head-actions">
+          <button class="ghost-btn" id="uploadBtn">unggah file</button>
+          <input type="file" id="fileInput" accept=".html,.htm,.js,.css,.txt,text/*" hidden>
+        </div>
+      </div>
+      <div class="drop-zone" id="dropZone">
+        <textarea id="input" spellcheck="false" placeholder="Tempel kode HTML, CSS, atau JS kamu di sini, atau seret file ke sini...
+
+Contoh:
+<div class='hello'>Halo dunia</div>
+<script>console.log('rahasia')</script>"></textarea>
+        <div class="drop-overlay" id="dropOverlay">lepas file di sini</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="tag"><span class="dots"><span></span><span></span><span></span></span>output.cipher</div>
+        <button class="ghost-btn" id="copyBtn">salin</button>
+      </div>
+      <pre class="output empty" id="output">// hasil acak akan muncul di sini</pre>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="modes">
+      <button class="active" data-mode="b64">Base64</button>
+      <button data-mode="char">Char-code</button>
+      <button data-mode="xor">XOR + Base64</button>
+    </div>
+
+    <button class="btn3d" id="runBtn">
+      <span class="edge"></span>
+      <span class="face">ACAK KODE →</span>
+    </button>
+
+    <button class="ghost-btn" id="downloadBtn">unduh .html</button>
+  </div>
+
+  <footer>mode aktif: <span id="modeLabel">Base64</span> · hasil tetap berjalan sama seperti kode asli saat dibuka di browser</footer>
+</div>
+
+<div class="copied-toast" id="toast">Disalin ke clipboard</div>
+
+<script>
+(function(){
+  let mode = 'b64';
+  const input = document.getElementById('input');
+  const output = document.getElementById('output');
+  const modeLabel = document.getElementById('modeLabel');
+  const toast = document.getElementById('toast');
+
+  document.querySelectorAll('.modes button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.modes button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      mode = btn.dataset.mode;
+      modeLabel.textContent = btn.textContent;
+    });
+  });
+
+  function toBase64Unicode(str){
+    return btoa(unescape(encodeURIComponent(str)));
+  }
+
+  function xorEncode(str, key){
+    let out = '';
+    for(let i=0;i<str.length;i++){
+      out += String.fromCharCode(str.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+    }
+    return out;
+  }
+
+  function obfuscate(code){
+    if(!code.trim()) return '';
+
+    if(mode === 'b64'){
+      const b64 = toBase64Unicode(code);
+      return `<script>document.write(decodeURIComponent(escape(atob("${b64}"))))<\/script>`;
+    }
+
+    if(mode === 'char'){
+      const codes = [];
+      for(let i=0;i<code.length;i++) codes.push(code.charCodeAt(i));
+      return `<script>document.write(String.fromCharCode(${codes.join(',')}))<\/script>`;
+    }
+
+    if(mode === 'xor'){
+      const key = 'c1ph3r';
+      const xored = xorEncode(code, key);
+      const b64 = btoa(unescape(encodeURIComponent(xored)));
+      return `<script>
+(function(){
+  var k="${key}", d=atob("${b64}"), o="";
+  for(var i=0;i<d.length;i++){ o += String.fromCharCode(d.charCodeAt(i) ^ k.charCodeAt(i % k.length)); }
+  document.write(decodeURIComponent(escape(o)));
+})();
+<\/script>`;
+    }
+  }
+
+  function render(){
+    const code = input.value;
+    const result = obfuscate(code);
+    if(!result){
+      output.textContent = '// hasil acak akan muncul di sini';
+      output.classList.add('empty');
+    } else {
+      output.textContent = result;
+      output.classList.remove('empty');
+    }
+  }
+
+  document.getElementById('runBtn').addEventListener('click', render);
+
+  // --- Upload file ---
+  const fileNameTag = document.getElementById('fileName');
+  const fileInput = document.getElementById('fileInput');
+  const uploadBtn = document.getElementById('uploadBtn');
+  const dropZone = document.getElementById('dropZone');
+  const MAX_SIZE = 2 * 1024 * 1024; // 2MB, cukup untuk file teks/kode
+
+  function loadFile(file){
+    if(!file) return;
+    if(file.size > MAX_SIZE){
+      fileNameTag.textContent = 'file terlalu besar (maks 2MB)';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e)=>{
+      input.value = e.target.result;
+      fileNameTag.textContent = file.name;
+      render();
+    };
+    reader.onerror = ()=>{ fileNameTag.textContent = 'gagal membaca file'; };
+    reader.readAsText(file);
+  }
+
+  uploadBtn.addEventListener('click', ()=> fileInput.click());
+  fileInput.addEventListener('change', (e)=>{
+    loadFile(e.target.files[0]);
+    fileInput.value = '';
+  });
+
+  ['dragenter','dragover'].forEach(evt=>{
+    dropZone.addEventListener(evt, (e)=>{
+      e.preventDefault(); e.stopPropagation();
+      dropZone.classList.add('dragging');
+    });
+  });
+  ['dragleave','drop'].forEach(evt=>{
+    dropZone.addEventListener(evt, (e)=>{
+      e.preventDefault(); e.stopPropagation();
+      if(evt === 'drop'){
+        const file = e.dataTransfer.files && e.dataTransfer.files[0];
+        loadFile(file);
+      }
+      dropZone.classList.remove('dragging');
+    });
+  });
+
+  document.getElementById('copyBtn').addEventListener('click', ()=>{
+    const text = output.textContent;
+    if(!text || output.classList.contains('empty')) return;
+    navigator.clipboard.writeText(text).then(()=>{
+      toast.classList.add('show');
+      setTimeout(()=>toast.classList.remove('show'), 1600);
+    }).catch(()=>{});
+  });
+
+  document.getElementById('downloadBtn').addEventListener('click', ()=>{
+    const text = output.textContent;
+    if(!text || output.classList.contains('empty')) return;
+    const blob = new Blob([text], {type:'text/html'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'obfuscated.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  // initial demo
+  input.value = `<div class="hello">Halo dunia</div>
+<script>console.log('ini rahasia')<\/script>`;
+  render();
+})();
+</script>
+</body>
+</html>
