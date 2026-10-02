@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>HTML ke Link</title>
+<style>
+:root{--bg:#fafaf9;--card:#fff;--tx:#1c1917;--mu:#78716c;--bd:#e7e5e4;--ac:#2563eb;--ac2:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0c0a09;--card:#1c1917;--tx:#fafaf9;--mu:#a8a29e;--bd:#292524;--ac:#60a5fa;--ac2:#0c0a09}}
+:root[data-theme="dark"]{--bg:#0c0a09;--card:#1c1917;--tx:#fafaf9;--mu:#a8a29e;--bd:#292524;--ac:#60a5fa;--ac2:#0c0a09}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:640px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:1.6rem;margin:8px 0 4px}
+p.s{color:var(--mu);margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px;margin-bottom:14px}
+#drop{border:2px dashed var(--bd);border-radius:14px;padding:28px 16px;text-align:center;cursor:pointer;color:var(--mu)}
+#drop.on{border-color:var(--ac);color:var(--ac)}
+button,select{font:inherit;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:10px 14px}
+button.p{background:var(--ac);color:var(--ac2);border-color:var(--ac);font-weight:600;width:100%}
+button:disabled{opacity:.5}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+ul{list-style:none;margin:10px 0 0;padding:0;max-height:200px;overflow:auto}
+li{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--bd);font-size:.9rem}
+li span:last-child{color:var(--mu);white-space:nowrap}
+textarea{width:100%;height:90px;font:12px monospace;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);padding:8px;resize:vertical;word-break:break-all}
+iframe{width:100%;height:420px;border:1px solid var(--bd);border-radius:10px;background:#fff}
+.w{color:#d97706;font-size:.85rem}
+.hide{display:none}
+body.view{overflow:hidden}
+body.view main{display:none}
+#vf{display:none;position:fixed;inset:0;width:100%;height:100%;border:0;border-radius:0;background:#fff}
+body.view #vf{display:block}
+</style>
+</head>
+<body>
+<main>
+  <h1>🚀 HTML ke Link</h1>
+  <p class="s">Upload file HTML, CSS, JS, dan gambar (boleh banyak), lalu dapatkan link yang bisa dibagikan.</p>
+
+  <div class="card">
+    <div id="drop">Ketuk atau seret file ke sini</div>
+    <input id="fi" type="file" multiple hidden>
+    <input id="fd" type="file" webkitdirectory hidden>
+    <div class="row"><button id="bf">Pilih file</button><button id="bd">Pilih folder</button><button id="bc">Hapus semua</button></div>
+    <ul id="list"></ul>
+  </div>
+
+  <div class="card">
+    <label for="entry">Halaman utama</label><br>
+    <select id="entry" style="width:100%;margin:6px 0 12px"></select>
+    <button class="p" id="go" disabled>Buat Link</button>
+  </div>
+
+  <div class="card hide" id="out">
+    <b>Link kamu</b>
+    <textarea id="url" readonly></textarea>
+    <div class="row"><button id="cp">Salin link</button><button id="op">Buka</button></div>
+    <p class="w" id="warn"></p>
+  </div>
+
+  <div class="card hide" id="pv"><b>Pratinjau</b><br><br><iframe id="pf" sandbox="allow-scripts allow-forms allow-popups allow-modals"></iframe></div>
+</main>
+<iframe id="vf" sandbox="allow-scripts allow-forms allow-popups allow-modals"></iframe>
+
+<script>
+const $=id=>document.getElementById(id);
+let files={};            // path -> {p,t:'text'|'data',c,m}
+const TEXT=/\.(html?|css|js|mjs|json|svg|txt|xml|md)$/i;
+const MIME={html:'text/html',htm:'text/html',css:'text/css',js:'text/javascript',mjs:'text/javascript',json:'application/json',svg:'image/svg+xml',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',webp:'image/webp',ico:'image/x-icon',mp4:'video/mp4',webm:'video/webm',mp3:'audio/mpeg',woff:'font/woff',woff2:'font/woff2',ttf:'font/ttf'};
+const ext=p=>(p.split('.').pop()||'').toLowerCase();
+
+/* ---------- pack / unpack ---------- */
+async function pack(o){
+  const st=new Blob([JSON.stringify(o)]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+  const b=new Uint8Array(await new Response(st).arrayBuffer());let s='';
+  for(let i=0;i<b.length;i+=8192)s+=String.fromCharCode.apply(null,b.subarray(i,i+8192));
+  return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+async function unpack(t){
+  t=t.replace(/-/g,'+').replace(/_/g,'/');const s=atob(t);const b=new Uint8Array(s.length);
+  for(let i=0;i<s.length;i++)b[i]=s.charCodeAt(i);
+  const st=new Blob([b]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return JSON.parse(await new Response(st).text());
+}
+
+/* ---------- bundler ---------- */
+function norm(base,rel){
+  rel=rel.split('#')[0].split('?')[0];
+  let parts=rel.startsWith('/')?[]:base.split('/').slice(0,-1);
+  rel.split('/').forEach(x=>{if(x==='..')parts.pop();else if(x&&x!=='.')parts.push(x)});
+  return parts.join('/');
+}
+function get(F,base,rel){
+  if(!rel||/^(https?:|data:|blob:|\/\/|#|mailto:|tel:|javascript:)/i.test(rel))return null;
+  return F[norm(base,decodeURIComponent(rel))]||null;
+}
+function dataUrl(f){
+  if(f.t==='data')return f.c;
+  return 'data:'+f.m+';base64,'+btoa(unescape(encodeURIComponent(f.c)));
+}
+function cssInline(F,f){
+  return f.c.replace(/url\(\s*['"]?([^'")]+)['"]?\s*\)/g,(m,u)=>{const g=get(F,f.p,u);return g?'url('+dataUrl(g)+')':m});
+}
+const NAV=`document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href]');if(!a)return;var h=a.getAttribute('href');if(!h||/^(https?:|#|mailto:|tel:|javascript:)/i.test(h))return;e.preventDefault();parent.postMessage({nav:h},'*')});`;
+function build(F,path){
+  const doc=new DOMParser().parseFromString(F[path].c,'text/html');
+  doc.querySelectorAll('link[rel~="stylesheet"][href]').forEach(l=>{
+    const f=get(F,path,l.getAttribute('href'));
+    if(f){const s=doc.createElement('style');s.textContent=cssInline(F,f);l.replaceWith(s)}
+  });
+  doc.querySelectorAll('script[src]').forEach(sc=>{
+    const f=get(F,path,sc.getAttribute('src'));
+    if(f){sc.removeAttribute('src');sc.textContent=f.c.replace(/<\/script/gi,'<\\/script')}
+  });
+  doc.querySelectorAll('[src],link[rel~="icon"][href]').forEach(el=>{
+    if(el.tagName==='SCRIPT')return;
+    const a=el.hasAttribute('src')?'src':'href';
+    const f=get(F,path,el.getAttribute(a));
+    if(f)el.setAttribute(a,dataUrl(f));
+  });
+  const n=doc.createElement('script');n.textContent=NAV;doc.head.prepend(n);
+  return '<!DOCTYPE html>'+doc.documentElement.outerHTML;
+}
+function render(F,entry,frame){
+  let cur=entry;frame.srcdoc=build(F,cur);
+  const h=e=>{
+    if(e.source!==frame.contentWindow||!e.data||!e.data.nav)return;
+    let t=get(F,cur,e.data.nav);
+    if(!t&&/\/$|^\/?$/.test(e.data.nav))t=F[norm(cur,e.data.nav)+'index.html']||F['index.html'];
+    if(t&&/\.html?$/i.test(t.p)){cur=t.p;frame.srcdoc=build(F,cur)}
+  };
+  window.addEventListener('message',h);
+}
+
+/* ---------- viewer mode ---------- */
+(async()=>{
+  const m=location.hash.match(/^#v=(.+)$/);
+  if(!m)return;
+  document.body.classList.add('view');
+  try{
+    const d=await unpack(m[1]);
+    document.title=d.e;
+    render(d.f,d.e,$('vf'));
+  }catch(e){
+    document.body.classList.remove('view');
+    alert('Link tidak valid atau rusak.');
+  }
+})();
+
+/* ---------- builder ---------- */
+function refresh(){
+  const ks=Object.keys(files);
+  $('list').innerHTML=ks.map(k=>`<li><span>${k.replace(/</g,'&lt;')}</span><span>${(files[k].c.length/1024).toFixed(1)} KB</span></li>`).join('');
+  const htmls=ks.filter(k=>/\.html?$/i.test(k));
+  const prev=$('entry').value;
+  $('entry').innerHTML=htmls.map(k=>`<option>${k}</option>`).join('');
+  $('entry').value=htmls.includes(prev)?prev:(htmls.find(k=>/(^|\/)index\.html?$/i.test(k))||htmls[0]||'');
+  $('go').disabled=!htmls.length;
+}
+function readFile(f){
+  return new Promise(res=>{
+    let p=(f.webkitRelativePath||f.name);
+    if(f.webkitRelativePath)p=p.split('/').slice(1).join('/');
+    const r=new FileReader(),isT=TEXT.test(f.name);
+    r.onload=()=>{files[p]={p,t:isT?'text':'data',c:r.result,m:MIME[ext(p)]||'application/octet-stream'};res()};
+    isT?r.readAsText(f):r.readAsDataURL(f);
+  });
+}
+async function add(list){await Promise.all([...list].map(readFile));refresh()}
+$('bf').onclick=()=>$('fi').click();
+$('drop').onclick=()=>$('fi').click();
+$('bd').onclick=()=>$('fd').click();
+$('fi').onchange=e=>{add(e.target.files);e.target.value=''};
+$('fd').onchange=e=>{add(e.target.files);e.target.value=''};
+$('bc').onclick=()=>{files={};refresh();$('out').classList.add('hide');$('pv').classList.add('hide')};
+['dragover','dragenter'].forEach(ev=>$('drop').addEventListener(ev,e=>{e.preventDefault();$('drop').classList.add('on')}));
+['dragleave','drop'].forEach(ev=>$('drop').addEventListener(ev,e=>{e.preventDefault();$('drop').classList.remove('on')}));
+$('drop').addEventListener('drop',e=>add(e.dataTransfer.files));
+
+$('go').onclick=async()=>{
+  const entry=$('entry').value;
+  $('go').textContent='Memproses…';
+  const tok=await pack({e:entry,f:files});
+  const url=location.href.split('#')[0]+'#v='+tok;
+  $('url').value=url;$('out').classList.remove('hide');
+  $('warn').textContent=url.length>60000?`Link sangat panjang (${Math.round(url.length/1000)}K karakter). Mungkin gagal dibuka di beberapa aplikasi/browser; kecilkan ukuran gambar/file.`:'';
+  $('pv').classList.remove('hide');render(files,entry,$('pf'));
+  $('go').textContent='Buat Link';
+  $('out').scrollIntoView({behavior:'smooth'});
+};
+$('cp').onclick=async()=>{
+  try{await navigator.clipboard.writeText($('url').value)}catch(e){$('url').select();document.execCommand('copy')}
+  $('cp').textContent='Tersalin ✓';setTimeout(()=>$('cp').textContent='Salin link',1500);
+};
+$('op').onclick=()=>window.open($('url').value,'_blank');
+refresh();
+</script>
+</body>
+</html>
